@@ -1,0 +1,21 @@
+services:
+  antibox:
+    build: .
+    container_name: antibox
+    hostname: antibox
+    networks:
+      - boxnet
+    ports:
+      - "6080:6080"
+      - "5000:5000"
+      - "4020:4020"
+    environment:
+      - VNC_RESOLUTION=1280x800
+    volumes:
+      - ./chal:/home/chal
+      - ./antigravity-data:/root/.config/antigravity-data
+    shm_size: 2gb
+
+networks:
+  boxnet:
+    driver: bridge

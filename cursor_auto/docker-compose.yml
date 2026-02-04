@@ -1,0 +1,21 @@
+services:
+  box1:
+    build: .
+    container_name: box1
+    hostname: box1
+    networks:
+      - boxnet
+    ports:
+      - "6080:6080"
+      - "5000:5000"
+    environment:
+      # - VNC_RESOLUTION=1920x1080
+      - VNC_RESOLUTION=1280x800
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./chal:/home/chal
+    shm_size: 2gb
+
+networks:
+  boxnet:
+    driver: bridge

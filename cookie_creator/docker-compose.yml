@@ -1,0 +1,19 @@
+services:
+  logging:
+    build: .
+    container_name: logging
+    hostname: logging
+    networks:
+      - boxnet
+    ports:
+      - "6081:6080"
+    environment:
+      - VNC_RESOLUTION=1280x800
+    volumes:
+      - ./chal:/home/chal
+      - ./antigravity-data:/root/.config/antigravity-data
+    shm_size: 2gb
+
+networks:
+  boxnet:
+    driver: bridge

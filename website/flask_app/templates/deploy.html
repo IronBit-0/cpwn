@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Deploy - Antigravity Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .deploy-form {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .file-upload-area {
+        border: 2px dashed #333;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .file-upload-area:hover,
+    .file-upload-area.dragover {
+        border-color: #e94560;
+        background-color: rgba(233, 69, 96, 0.1);
+    }
+
+    .file-upload-area input[type="file"] {
+        display: none;
+    }
+
+    .file-upload-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #666;
+    }
+
+    .file-list {
+        margin-top: 1rem;
+        text-align: left;
+    }
+
+    .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        background-color: #0f3460;
+        border-radius: 5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .file-item .remove-file {
+        background: none;
+        border: none;
+        color: #e94560;
+        cursor: pointer;
+        font-size: 1.2rem;
+    }
+
+    .result-panel {
+        margin-top: 2rem;
+        display: none;
+    }
+
+    .result-panel.show {
+        display: block;
+    }
+
+    .result-details {
+        background-color: #0f3460;
+        padding: 1rem;
+        border-radius: 5px;
+        font-family: monospace;
+    }
+
+    .result-details p {
+        margin: 0.5rem 0;
+    }
+
+    .result-details .label {
+        color: #888;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <h1>Deploy New Container</h1>
+</div>
+
+<div class="card deploy-form">
+    <form id="deployForm" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="account">Select Account</label>
+            <select id="account" name="account" required>
+                <option value="">-- Select Account --</option>
+                {% for account in accounts %}
+                <option value="{{ account }}">{{ account }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="model">Select Model</label>
+            <select id="model" name="model">
+                {% for model in models %}
+                <option value="{{ model }}" {% if model=="Gemini Pro 3 High" %}selected{% endif %}>{{ model }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="nickname">Container Nickname (optional)</label>
+            <input type="text" id="nickname" name="nickname" placeholder="e.g., CTF Challenge 1, Binary Exploit, etc.">
+        </div>
+
+        <div class="form-group">
+            <label>Upload Challenge Files</label>
+            <div class="file-upload-area" id="fileUploadArea">
+                <div class="file-upload-icon">&#128193;</div>
+                <p>Drag and drop files here or click to browse</p>
+                <input type="file" id="fileInput" name="files" multiple>
+            </div>
+            <div class="file-list" id="fileList"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="challenge_description">Challenge Description</label>
+            <textarea id="challenge_description" name="challenge_description"
+                placeholder="Enter the challenge description or initial prompt..."></textarea>
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="flag_detection" name="flag_detection" checked style="width: auto;">
+            <label for="flag_detection" style="margin: 0; cursor: pointer;">Enable Flag Detection</label>
+            <span style="color: #888; font-size: 0.85rem; margin-left: 0.5rem;">(Uses AI to automatically find flags
+                when complete)</span>
+        </div>
+
+        <button type="submit" class="btn" id="deployBtn">
+            <span class="btn-text">Deploy Container</span>
+            <span class="loading" style="display: none;"></span>
+        </button>
+    </form>
+
+    <div class="result-panel" id="resultPanel">
+        <h3>Deployment Result</h3>
+        <div id="resultContent"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const deployForm = document.getElementById('deployForm');
+    const deployBtn = document.getElementById('deployBtn');
+    const resultPanel = document.getElementById('resultPanel');
+    const resultContent = document.getElementById('resultContent');
+
+    let selectedFiles = [];
+
+    // Click to open file dialog
+    fileUploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // Handle file selection
+    fileInput.addEventListener('change', (e) => {
+        addFiles(e.target.files);
+    });
+
+    // Drag and drop handlers
+    fileUploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.add('dragover');
+    });
+
+    fileUploadArea.addEventListener('dragleave', () => {
+        fileUploadArea.classList.remove('dragover');
+    });
+
+    fileUploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+        addFiles(e.dataTransfer.files);
+    });
+
+    function addFiles(files) {
+        for (let file of files) {
+            if (!selectedFiles.find(f => f.name === file.name)) {
+                selectedFiles.push(file);
+            }
+        }
+        updateFileList();
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        updateFileList();
+    }
+
+    function updateFileList() {
+        fileList.innerHTML = selectedFiles.map((file, index) => `
+            <div class="file-item">
+                <span>${file.name} (${formatFileSize(file.size)})</span>
+                <button type="button" class="remove-file" onclick="removeFile(${index})">&#10005;</button>
+            </div>
+        `).join('');
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // Form submission
+    deployForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData();
+        formData.append('account', document.getElementById('account').value);
+        formData.append('model', document.getElementById('model').value);
+        formData.append('nickname', document.getElementById('nickname').value);
+        formData.append('flag_detection', document.getElementById('flag_detection').checked ? 'on' : 'off');
+        formData.append('challenge_description', document.getElementById('challenge_description').value);
+
+        for (let file of selectedFiles) {
+            formData.append('files', file);
+        }
+
+        // Show loading state
+        deployBtn.disabled = true;
+        deployBtn.querySelector('.btn-text').textContent = 'Deploying...';
+        deployBtn.querySelector('.loading').style.display = 'inline-block';
+        resultPanel.classList.remove('show');
+
+        try {
+            const response = await fetch('/deploy', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                resultContent.innerHTML = `
+                    <div class="alert alert-success">Container deployed successfully!</div>
+                    <div class="result-details">
+                        <p><span class="label">Container Name:</span> ${data.container_name}</p>
+                        <p><span class="label">Container ID:</span> ${data.container_id}</p>
+                        <p><span class="label">IP Address:</span> ${data.ip_address}</p>
+                        <p><span class="label">noVNC Port:</span> ${data.ports.novnc}</p>
+                        <p><span class="label">API Port:</span> ${data.ports.api}</p>
+                        <p style="margin-top: 1rem;">
+                            <a href="http://localhost:${data.ports.novnc}/vnc.html" target="_blank" class="btn">Open noVNC</a>
+                        </p>
+                    </div>
+                `;
+            } else {
+                resultContent.innerHTML = `
+                    <div class="alert alert-error">Deployment failed: ${data.error || 'Unknown error'}</div>
+                `;
+            }
+        } catch (error) {
+            resultContent.innerHTML = `
+                <div class="alert alert-error">Deployment failed: ${error.message}</div>
+            `;
+        }
+
+        resultPanel.classList.add('show');
+
+        // Reset button
+        deployBtn.disabled = false;
+        deployBtn.querySelector('.btn-text').textContent = 'Deploy Container';
+        deployBtn.querySelector('.loading').style.display = 'none';
+    });
+</script>
+{% endblock %}

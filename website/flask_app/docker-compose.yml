@@ -1,0 +1,28 @@
+services:
+  antigravity-manager:
+    build: .
+    container_name: antigravity-manager
+    hostname: antigravity-manager
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Mount Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount accounts folder (both internal path and same host path for sibling container access)
+      - /home/cpwn/boxes/website/accounts:/accounts:ro
+      # Mount antigravity_auto for building images
+      - /home/cpwn/boxes/website/antigravity_auto:/antigravity_auto:ro
+      # Mount container data - use absolute host path so sibling containers can access
+      - /home/cpwn/boxes/website/flask_app/container_data:/app/container_data
+      # Mount uploads folder
+      - /home/cpwn/boxes/website/flask_app/uploads:/app/uploads
+    environment:
+      - FLASK_ENV=production
+      - ACCOUNTS_FOLDER=/accounts
+      - ANTIGRAVITY_AUTO_PATH=/antigravity_auto
+      # Host paths for Docker volume mounts (used when creating sibling containers)
+      - HOST_CONTAINER_DATA_PATH=/home/cpwn/boxes/website/flask_app/container_data
+      - HOST_ACCOUNTS_PATH=/home/cpwn/boxes/website/accounts
+    restart: unless-stopped

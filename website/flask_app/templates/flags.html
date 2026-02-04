@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Flags - Antigravity Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .flags-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .flags-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .flags-table th,
+    .flags-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #333;
+    }
+
+    .flags-table th {
+        background-color: #0f3460;
+        color: #e94560;
+        font-weight: 600;
+    }
+
+    .flags-table tr:hover {
+        background-color: rgba(233, 69, 96, 0.1);
+    }
+
+    .flag-value {
+        font-family: monospace;
+        background-color: #0a0a0a;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        color: #28a745;
+        font-size: 0.95rem;
+    }
+
+    .container-link {
+        color: #e94560;
+        text-decoration: none;
+    }
+
+    .container-link:hover {
+        text-decoration: underline;
+    }
+
+    .no-flags {
+        text-align: center;
+        color: #666;
+        padding: 3rem;
+        font-size: 1.2rem;
+    }
+
+    .timestamp {
+        color: #888;
+        font-size: 0.85rem;
+    }
+
+    .copy-btn {
+        background: none;
+        border: 1px solid #e94560;
+        color: #e94560;
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        margin-left: 0.5rem;
+    }
+
+    .copy-btn:hover {
+        background-color: rgba(233, 69, 96, 0.2);
+    }
+
+    .copy-btn.copied {
+        background-color: #28a745;
+        border-color: #28a745;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flags-container">
+    <h1>Found Flags</h1>
+
+    <div class="card">
+        {% if flags %}
+        <table class="flags-table">
+            <thead>
+                <tr>
+                    <th>Container</th>
+                    <th>Flag</th>
+                    <th>Found At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for flag in flags %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('monitor') }}?container={{ flag.container_name }}" class="container-link">
+                            {{ flag.display_name }}
+                        </a>
+                        <div style="font-size: 0.8rem; color: #666;">{{ flag.container_name }}</div>
+                    </td>
+                    <td>
+                        <span class="flag-value" id="flag-{{ loop.index }}">{{ flag.flag }}</span>
+                        <button class="copy-btn" onclick="copyFlag('flag-{{ loop.index }}', this)">Copy</button>
+                    </td>
+                    <td class="timestamp">{{ flag.timestamp }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-flags">
+            No flags found yet. Deploy a container with flag detection enabled!
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyFlag(elementId, button) {
+        const flagText = document.getElementById(elementId).textContent;
+        navigator.clipboard.writeText(flagText).then(() => {
+            button.textContent = 'Copied!';
+            button.classList.add('copied');
+            setTimeout(() => {
+                button.textContent = 'Copy';
+                button.classList.remove('copied');
+            }, 2000);
+        });
+    }
+</script>
+{% endblock %}

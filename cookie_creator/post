@@ -1,0 +1,1 @@
+/usr/bin/antigravity --remote-debugging-port=9222 --no-sandbox --disable-gpu --user-data-dir /root/.config/antigravity-data /home/chal &
